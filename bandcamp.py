@@ -51,6 +51,10 @@ dates = None        #dependant
 #+++++++++++++++++++interactables
 music_list = None
 pages = None
+#selected elements
+s_genre = genre_bar.find_element_by_class_name('selected')
+s_subgenre = None
+s_music = None
 
 #Getters
 
@@ -129,7 +133,9 @@ def getPages():
 
 def setGenre(g):
     #item out of sight handling
+    global s_genre
     if g in getGenresNames():
+        s_genre = g
         try:
             getGenres()[g].click()
         except Exception as e :
@@ -148,8 +154,22 @@ def setPage(p):
         print(f"** can not find '{p}' page")
 
 
-def setSubGenres():
-    return "Subgenres Set!"
+def setSubGenre(s):
+    subs = getSubGenres()
+    global s_subgenre,s_genre
+    if len(subs)<=0:
+        print(f"{s_genre} has no subgenre")
+    else:
+        if s in subs.keys():
+            try:
+                subs[s].click()
+                s_subgenre = s
+            except:
+                print("element obscured try again")
+                subgenre_bar.find_element_by_class_name('scroller-next').click()
+        else:
+            print(f"unkown {s} subgenre" )
+    
 
 def setFilters():
     return "Filters Set!"
@@ -169,8 +189,7 @@ def setTimes():
 def destroy():
     ff.close()
 
-def refresh():
-    ff.refresh()
+def updateData():
     #========globals
     global discover, pages_holder, filter_bar, genre_bar, subgenre_bar, slice_bar,location_bar, format_bar, dates_bar, music_bar, music_bar
     #parent holders
@@ -189,7 +208,12 @@ def refresh():
 
     #============End
 
-    pass
+
+
+def refresh():
+    ff.refresh()
+    updateData()
+    
 
 #interaction
 def play(music):
@@ -201,23 +225,34 @@ def play(music):
 
 
 ###Main LOOP
-HELP = """
-        help                for help
-        exit                to exit
-        listartist          to list current playlist artist
-        listmusic           to list available music
-        listgenres          to list available genres
-        setgenre [genre]    to set a genre filter
-        listpages           to list available pages
-        setpage [page]      to set a page
-        play [music_name]   to play a music
-        refresh             refresh pages (in case page not fully loaded)
+HELP = f"""
+        help                                for help
+        exit                                to exit
+        play [music_name]                   to play a music
+
+        listmusic                           to list available music
+        listartist                          to list current playlist artist
+
+        listgenres                          to list available genres
+        setgenre [genre]                    to set a genre filter
+
+        listpages                           to list available pages
+        setpage [page]                      to set a page
+
+        listsubs                            to list available subgenres
+        setsub [subgenre]                   to set a subgenre
+
+        getfilters                          {"*"*10}
+        activatefilter [filter_name]        {"*"*10}
+
+        refresh                             refresh pages (in case page not fully loaded)
        """  
 print(HELP)
 
 while True:
     command = input(">>")
     command_parts = command.split(' ')
+    parameters = ' '.join(command_parts[1:])
     if "exit" in command:
         print("Goodbye!")
         ff.close()
@@ -235,11 +270,17 @@ while True:
     elif "listgenres" in command:
         print("**", getGenresNames())
     elif "setgenre" in command:
-        setGenre(' '.join(command_parts[1:]))
+        setGenre(parameters)
     elif "listpages" in command:
         print("**", list(getPages().keys()))
     elif "setpage" in command:
-        setPage(' '.join(command_parts[1:]))
+        setPage(parameters)
+    elif "listsubs" in command:
+        print(getSubGenresNames()) 
+    elif "setsub" in command:
+        setSubGenre(parameters)
+    elif "updatedata" in command:           #dev tool
+        updateData()
     else:
         print(f"**unkown command '{command_parts[0]}'")
     
