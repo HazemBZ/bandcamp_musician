@@ -1,10 +1,27 @@
 from selenium.webdriver import Firefox
+from selenium.webdriver import Chrome
+
+import sys
 
 
 #change for a headless connection
 URL = "https://bandcamp.com/"
+FF_PATH = "./drivers/geckodriver.exe"
+CHR_PATH = "./drivers/chromedriver.exe"
+EDG_PATH = "./drivers/msedgedriver.exe"#requires extra care
+ff = None
+
 print('Opening site...')
-ff = Firefox()
+#print(sys.argv)
+
+browser = sys.argv[1].lower()
+if browser == "firefox":
+    ff = Firefox(executable_path=FF_PATH)
+elif browser == "chrome":
+    ff = Chrome(executable_path=CHR_PATH)
+else :
+    print(f"unsupported {browser} browser")
+    exit(1)
 ff.get(URL)
 print("Site opened!")
 #+++++++++++++++++++++Prot
@@ -39,6 +56,7 @@ pages = None
 
 def getGenres():
     span_list = genre_bar.find_elements_by_tag_name('span')
+    global genres
     genres  = {a.text: a for a in span_list}
     return genres
 
@@ -47,6 +65,7 @@ def getGenresNames():
 
 def getSubGenres():
     span_list = subgenre_bar.find_elements_by_tag_name('span')
+    global sub_genres
     sub_genres = {a.text: a for a in span_list}
     return sub_genres
 
@@ -152,7 +171,8 @@ def destroy():
 
 def refresh():
     ff.refresh()
-    #========start
+    #========globals
+    global discover, pages_holder, filter_bar, genre_bar, subgenre_bar, slice_bar,location_bar, format_bar, dates_bar, music_bar, music_bar
     #parent holders
     discover = ff.find_element_by_id('discover')
     pages_holder = discover.find_element_by_class_name('discover-pages')
@@ -191,7 +211,7 @@ HELP = """
         listpages           to list available pages
         setpage [page]      to set a page
         play [music_name]   to play a music
-        refresh             currently breaks page elements references
+        refresh             refresh pages (in case page not fully loaded)
        """  
 print(HELP)
 
@@ -209,17 +229,17 @@ while True:
     elif "listmusic" in command:
         print("**", getMusicListNames())
     elif "play" in command:
-        play(" ".join(command_parts[1:]))
+        play(' '.join(command_parts[1:]))
     elif "refresh" in command:
         refresh()
     elif "listgenres" in command:
         print("**", getGenresNames())
     elif "setgenre" in command:
-        setGenre(command_parts[-1])
+        setGenre(' '.join(command_parts[1:]))
     elif "listpages" in command:
-        print("**", getPages().keys())
+        print("**", list(getPages().keys()))
     elif "setpage" in command:
-        setPage(command_parts[-1])
+        setPage(' '.join(command_parts[1:]))
     else:
         print(f"**unkown command '{command_parts[0]}'")
     
