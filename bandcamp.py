@@ -74,7 +74,9 @@ def getSubGenres():
     return sub_genres
 
 def getSubGenresNames():
-    return [a for a in getSubGenres().keys()]
+    global s_genre
+    l = [a for a in getSubGenres().keys()]
+    return l if l else f"No subgenre found for {s_genre}"
 
 def getFilters():
     span_list = filter_bar.find_elements_by_tag_name('span')
