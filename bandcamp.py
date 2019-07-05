@@ -103,22 +103,31 @@ def getMusicListArtists():
 
 def getPages():
     pages = pages_holder.find_elements_by_class_name('item-page') #direct
-    return pages
+    return {a.text: a for a in pages }
 
 
 ##Setters
 
-def setGenres(g):
+def setGenre(g):
     #item out of sight handling
     if g in getGenresNames():
         try:
             getGenres()[g].click()
         except Exception as e :
-            print(f"Error{e}")
+            print(f"Error: element obscured =) scrolling...")
             genre_bar.find_element_by_class_name('scroller-next').click()
-            getGenres()[g].click()
+            print("retry command")
     else:
-        print(f"Unregistered genre!{g}\t type generelist to list registered genres")
+        print(f"Unregistered genre! '{g}'")
+
+
+def setPage(p):
+    pages =  getPages()
+    if p in pages.keys():
+        pages[p].click()
+    else:
+        print(f"** can not find '{p}' page")
+
 
 def setSubGenres():
     return "Subgenres Set!"
@@ -177,9 +186,13 @@ HELP = """
         exit                to exit
         listartist          to list current playlist artist
         listmusic           to list available music
+        listgenres          to list available genres
+        setgenre [genre]    to set a genre filter
+        listpages           to list available pages
+        setpage [page]      to set a page
         play [music_name]   to play a music
-        refresh
-       """
+        refresh             currently breaks page elements references
+       """  
 print(HELP)
 
 while True:
@@ -192,13 +205,21 @@ while True:
     elif "help" in command :
         print(HELP)
     elif "listartist" in command:
-        print(getMusicListArtists())
+        print("**", getMusicListArtists())
     elif "listmusic" in command:
-        print(getMusicListNames())
+        print("**", getMusicListNames())
     elif "play" in command:
         play(" ".join(command_parts[1:]))
     elif "refresh" in command:
         refresh()
+    elif "listgenres" in command:
+        print("**", getGenresNames())
+    elif "setgenre" in command:
+        setGenre(command_parts[-1])
+    elif "listpages" in command:
+        print("**", getPages().keys())
+    elif "setpage" in command:
+        setPage(command_parts[-1])
     else:
-        print(f"unkown command '{command}'")
+        print(f"**unkown command '{command_parts[0]}'")
     
