@@ -9,19 +9,30 @@ URL = "https://bandcamp.com/"
 FF_PATH = "./drivers/geckodriver.exe"
 CHR_PATH = "./drivers/chromedriver.exe"
 EDG_PATH = "./drivers/msedgedriver.exe"#requires extra care
+HEADLESS = None
+with open("mode.txt" ,'r') as f:
+    HEADLESS = f.read() 
 ff = None
 
-print('Opening site...')
-#print(sys.argv)
 
+#print(sys.argv)
+print('setting up!')
 browser = sys.argv[1].lower()
 if browser == "firefox":
-    ff = Firefox(executable_path=FF_PATH)
+    from selenium.webdriver.firefox.options import Options
+    options = Options()
+    options.headless = bool(HEADLESS)
+    ff = Firefox(executable_path=FF_PATH, options=options)
 elif browser == "chrome":
-    ff = Chrome(executable_path=CHR_PATH)
+    from selenium.webdriver.chrome.options import Options
+    options = Options()
+    options.headless = bool(HEADLESS)
+    ff = Chrome(executable_path=CHR_PATH,options=options)
 else :
     print(f"unsupported {browser} browser")
     exit(1)
+
+print('Opening site...')
 ff.get(URL)
 print("Site opened!")
 #+++++++++++++++++++++Prot
@@ -214,7 +225,13 @@ def updateData():
 
 def refresh():
     ff.refresh()
-    updateData()
+    updateData() 
+
+def changemode(mode):
+    #test mode input-- 
+    with open("mode.txt", 'w') as f:
+        f.write("gibberish" if mode>1 else '')
+    
     
 
 #interaction
@@ -248,41 +265,49 @@ HELP = f"""
         activatefilter [filter_name]        {"*"*10}
 
         refresh                             refresh pages (in case page not fully loaded)
+        changemode [mode]                   browser run mode either 'headless' or 'graphical' (graphical by default)
        """  
 print(HELP)
 
+
 while True:
-    command = input(">>")
-    command_parts = command.split(' ')
-    parameters = ' '.join(command_parts[1:])
-    if "exit" in command:
-        print("Goodbye!")
-        ff.close()
-        break
-    elif "help" in command :
-        print(HELP)
-    elif "listartist" in command:
-        print("**", getMusicListArtists())
-    elif "listmusic" in command:
-        print("**", getMusicListNames())
-    elif "play" in command:
-        play(' '.join(command_parts[1:]))
-    elif "refresh" in command:
-        refresh()
-    elif "listgenres" in command:
-        print("**", getGenresNames())
-    elif "setgenre" in command:
-        setGenre(parameters)
-    elif "listpages" in command:
-        print("**", list(getPages().keys()))
-    elif "setpage" in command:
-        setPage(parameters)
-    elif "listsubs" in command:
-        print(getSubGenresNames()) 
-    elif "setsub" in command:
-        setSubGenre(parameters)
-    elif "updatedata" in command:           #dev tool
-        updateData()
-    else:
-        print(f"**unkown command '{command_parts[0]}'")
-    
+    try:
+        command = input(">>")
+        command_parts = command.split(' ')
+        parameters = ' '.join(command_parts[1:])
+        if "exit" in command:
+            print("Goodbye!")
+            ff.close()
+            break
+        elif "help" in command :
+            print(HELP)
+        elif "listartist" in command:
+            print("**", getMusicListArtists())
+        elif "listmusic" in command:
+            print("**", getMusicListNames())
+        elif "play" in command:
+            play(' '.join(command_parts[1:]))
+        elif "refresh" in command:
+            refresh()
+        elif "listgenres" in command:
+            print("**", getGenresNames())
+        elif "setgenre" in command:
+            setGenre(parameters)
+        elif "listpages" in command:
+            print("**", list(getPages().keys()))
+        elif "setpage" in command:
+            setPage(parameters)
+        elif "listsubs" in command:
+            print(getSubGenresNames()) 
+        elif "setsub" in command:
+            setSubGenre(parameters)
+        elif "changemode" in command:
+            changemode(len(command_parts))
+        elif "updatedata" in command:           #dev tool
+            updateData()
+        else:
+            print(f"**unkown command '{command_parts[0]}'")
+    except Exception as e:
+        print('Error\n',e,'Error\n')
+        print('Exiting...')
+        destroy()
