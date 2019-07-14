@@ -1,7 +1,6 @@
 from selenium.webdriver import Firefox
 from selenium.webdriver import Chrome
-
-import sys
+import sys, os
 
 
 #change for a headless connection
@@ -9,24 +8,25 @@ URL = "https://bandcamp.com/"
 FF_PATH = "./drivers/geckodriver.exe"
 CHR_PATH = "./drivers/chromedriver.exe"
 EDG_PATH = "./drivers/msedgedriver.exe"#requires extra care
-HEADLESS = None
-with open("mode.txt" ,'r') as f:
-    HEADLESS = f.read() 
+HEADLESS = not os.access('YES', os.R_OK)
 ff = None
 
-
+print(f'HEADLESS:{HEADLESS}')
 #print(sys.argv)
 print('setting up!')
 browser = sys.argv[1].lower()
 if browser == "firefox":
     from selenium.webdriver.firefox.options import Options
     options = Options()
-    options.headless = bool(HEADLESS)
+    if sys.argv[-1].lower() == 'android':
+        options.add_argument('androidPackage', 'com.android.chrome')
+        print('run on android')
+    options.headless = HEADLESS
     ff = Firefox(executable_path=FF_PATH, options=options)
 elif browser == "chrome":
     from selenium.webdriver.chrome.options import Options
     options = Options()
-    options.headless = bool(HEADLESS)
+    options.headless = HEADLESS
     ff = Chrome(executable_path=CHR_PATH,options=options)
 else :
     print(f"unsupported {browser} browser")
@@ -37,7 +37,12 @@ ff.get(URL)
 print("Site opened!")
 #+++++++++++++++++++++Prot
 #parent holders
-discover = ff.find_element_by_id('discover')
+try:
+    discover = ff.find_element_by_id('discover')
+except Exception as e:
+    print('failed to load page (probably a network issue)')
+    exit(0)
+
 pages_holder = discover.find_element_by_class_name('discover-pages')
 
 #direct holders
@@ -187,20 +192,26 @@ def setSubGenre(s):
 def setFilters():
     return "Filters Set!"
 
+
 def setSlices():
     return "Slices Set!"
+
 
 def setFormats():
     return "Formats Set!"
 
+
 def setLocations():
     return "Locations Set!"
+
 
 def setTimes():
     return "Times Set!"
 
+
 def destroy():
     ff.close()
+
 
 def updateData():
     #========globals
@@ -222,17 +233,32 @@ def updateData():
     #============End
 
 
-
 def refresh():
     ff.refresh()
     updateData() 
 
+
+## creates or deletes a YES file
 def changemode(mode):
-    #test mode input-- 
-    with open("mode.txt", 'w') as f:
-        f.write("gibberish" if mode>1 else '')
-    
-    
+    if "headless" in mode:
+        if HEADLESS:
+            print('already in headless mode')
+        else:
+            try:                #try delete YES file
+                os.remove('./YES')
+                HEADLESS = True
+                print('mode set to HEADLESS')    
+            except Exception as e:
+                print('\n',e,'\n')
+    elif "gui" in mode:
+        if HEADLESS:         
+            with open('YES','wb'):  #create YES file
+                pass
+            HEADLESS = False
+        else:
+            print('already in gui mode')
+    else:
+        print(f"unknown mode {mode}")
 
 #interaction
 def play(music):
@@ -265,7 +291,7 @@ HELP = f"""
         activatefilter [filter_name]        {"*"*10}
 
         refresh                             refresh pages (in case page not fully loaded)
-        changemode [mode]                   browser run mode either 'headless' or 'graphical' (graphical by default)
+        {"changemode [mode]                 headless or graphical mode (add or delete a YES file with no extensions to enable/disable headless mode)"*0}
        """  
 print(HELP)
 
@@ -302,7 +328,7 @@ while True:
         elif "setsub" in command:
             setSubGenre(parameters)
         elif "changemode" in command:
-            changemode(len(command_parts))
+            changemode(command_parts[1:])
         elif "updatedata" in command:           #dev tool
             updateData()
         else:
