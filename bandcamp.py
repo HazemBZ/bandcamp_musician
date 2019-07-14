@@ -7,7 +7,7 @@ import sys, os
 URL = "https://bandcamp.com/"
 FF_PATH = "./drivers/geckodriver.exe"
 CHR_PATH = "./drivers/chromedriver.exe"
-CHRA_PATH = "./drivers/chromedriver"
+CHRA_PATH = "./chromedriver"
 EDG_PATH = "./drivers/msedgedriver.exe"#requires extra care
 HEADLESS = not os.access('YES', os.R_OK)
 ff = None
