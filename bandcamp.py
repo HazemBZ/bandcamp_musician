@@ -25,7 +25,7 @@ elif browser == "chrome":
     from selenium.webdriver.chrome.options import Options
     options = Options()
     if sys.argv[-1].lower() == 'android':
-        options.add_argument('androidPackage', 'com.android.chrome')
+        options.add_experimental_option('androidPackage', 'com.android.chrome')
         print('run on android')
         ff = Chrome(executable_path=CHRA_PATH,options=options)
     else:
