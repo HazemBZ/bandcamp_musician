@@ -27,7 +27,7 @@ elif browser == "chrome":
     if sys.argv[-1].lower() == 'android':
         options.add_experimental_option('androidPackage', 'com.android.chrome')
         print('run on android')
-        ff = Chrome(executable_path=CHRA_PATH,options=options)
+        ff = Chrome(CHRA_PATH, options=options)
     else:
         options.headless = HEADLESS
         ff = Chrome(executable_path=CHR_PATH,options=options)
