@@ -7,6 +7,7 @@ import sys, os
 URL = "https://bandcamp.com/"
 FF_PATH = "./drivers/geckodriver.exe"
 CHR_PATH = "./drivers/chromedriver.exe"
+CHRA_PATH = "./drivers/chromedriver"
 EDG_PATH = "./drivers/msedgedriver.exe"#requires extra care
 HEADLESS = not os.access('YES', os.R_OK)
 ff = None
@@ -26,8 +27,10 @@ elif browser == "chrome":
     if sys.argv[-1].lower() == 'android':
         options.add_argument('androidPackage', 'com.android.chrome')
         print('run on android')
-    options.headless = HEADLESS
-    ff = Chrome(executable_path=CHR_PATH,options=options)
+        ff = Chrome(executable_path=CHRA_PATH,options=options)
+    else:
+        options.headless = HEADLESS
+        ff = Chrome(executable_path=CHR_PATH,options=options)
 else :
     print(f"unsupported {browser} browser")
     exit(1)
