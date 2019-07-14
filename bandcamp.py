@@ -18,14 +18,14 @@ browser = sys.argv[1].lower()
 if browser == "firefox":
     from selenium.webdriver.firefox.options import Options
     options = Options()
-    if sys.argv[-1].lower() == 'android':
-        options.add_argument('androidPackage', 'com.android.chrome')
-        print('run on android')
     options.headless = HEADLESS
     ff = Firefox(executable_path=FF_PATH, options=options)
 elif browser == "chrome":
     from selenium.webdriver.chrome.options import Options
     options = Options()
+    if sys.argv[-1].lower() == 'android':
+        options.add_argument('androidPackage', 'com.android.chrome')
+        print('run on android')
     options.headless = HEADLESS
     ff = Chrome(executable_path=CHR_PATH,options=options)
 else :
