@@ -2,7 +2,7 @@ from selenium.webdriver import Firefox
 from selenium.webdriver import Chrome
 import sys, os
 
-
+### Android options does not work currently
 #change for a headless connection
 URL = "https://bandcamp.com/"
 FF_PATH = "./drivers/geckodriver.exe"
@@ -57,6 +57,7 @@ location_bar = discover.find_element_by_class_name('loc-bar')
 format_bar = discover.find_element_by_class_name('format-bar')
 dates_bar = discover.find_element_by_class_name('discover-dates')
 music_bar = discover.find_element_by_class_name('result-current')
+details_inner = discover.find_element_by_class_name('discover-detail-inner')
 
 #++++++++++++++++++++categories  (useless currently)
 genres = None       #independant
@@ -68,7 +69,8 @@ times = None        #dependant
 locations = None    #dependant
 dates = None        #dependant
 #+++++++++++++++++++interactables
-music_list = None
+named_music_list = None
+enum_music_list = None
 pages = None
 #selected elements
 s_genre = genre_bar.find_element_by_class_name('selected')
@@ -136,8 +138,8 @@ def getTimes():
 
 #++++++Elements
 def getMusicList():
-    music_list = discover.find_elements_by_class_name('discover-item') #direct
-    return music_list
+    named_music_list = discover.find_elements_by_class_name('discover-item') #direct
+    return named_music_list
 
 def getMusicListNames():
     return [el.text for el in music_bar.find_elements_by_class_name('item-title')]
@@ -236,6 +238,14 @@ def updateData():
     #============End
 
 
+def updateMusicLists():
+    global named_music_list, enum_music_list
+    n_list = getMusicListNames()
+    m_list = getMusicList()
+    named_music_list =  dict( zip( n_list, m_list ) )   #global
+    enum_music_list = dict(enumerate(m_list))   #global
+
+
 def refresh():
     ff.refresh()
     updateData() 
@@ -265,18 +275,42 @@ def changemode(mode):
 
 #interaction
 def play(music):
-    m_list = dict(list( zip( getMusicListNames(), getMusicList()) ))
-    if music in m_list.keys():
-        m_list[music].click()
+    if music in named_music_list.keys():
+        named_music_list[music].click()
     else:
-        print(f"{music} not found!" )
+        print(f"title: {music} not found!" )
+
+
+def playindex(index):
+    if index.isdigit():
+        dig = int(index)
+        if dig in enum_music_list.keys():
+            enum_music_list[dig].click()
+        else:
+            print(f"{dig} index not found!")
+    else:
+        print(f"{index} not a digit!!")
+
+
+def current():
+    global details_inner
+    title = details_inner.find_element_by_class_name('title').text
+    album = details_inner.find_element_by_class_name('detail-album').text
+    artist = details_inner.find_element_by_class_name('detail-artist').text
+    location = details_inner.find_element_by_class_name('detail-loc').text
+    time_el = details_inner.find_element_by_class_name('time_elapsed').text
+    time_tot = details_inner.find_element_by_class_name('time_total').text
+    return f"Playing: {title} from {album} {artist} of {location} \n\t{time_el}\\{time_tot}"
+
+
 
 
 ###Main LOOP
 HELP = f"""
         help                                for help
         exit                                to exit
-        play [music_name]                   to play a music
+        play [music_name]                   to play music with its name
+        playindex [index]                   to play music with an index
 
         listmusic                           to list available music
         listartist                          to list current playlist artist
@@ -294,6 +328,7 @@ HELP = f"""
         activatefilter [filter_name]        {"*"*10}
 
         refresh                             refresh pages (in case page not fully loaded)
+        current                             selected track details
         {"changemode [mode]                 headless or graphical mode (add or delete a YES file with no extensions to enable/disable headless mode)"*0}
        """  
 print(HELP)
@@ -313,7 +348,10 @@ while True:
         elif "listartist" in command:
             print("**", getMusicListArtists())
         elif "listmusic" in command:
-            print("**", getMusicListNames())
+            updateMusicLists()
+            print("**", dict(zip(enum_music_list.keys(), named_music_list.keys())))
+        elif "playindex" in command_parts:
+            playindex(command_parts[-1])
         elif "play" in command:
             play(' '.join(command_parts[1:]))
         elif "refresh" in command:
@@ -334,6 +372,10 @@ while True:
             changemode(command_parts[1:])
         elif "updatedata" in command:           #dev tool
             updateData()
+        elif "dev" in command:
+            break
+        elif "current" in command:
+            print(current())
         else:
             print(f"**unkown command '{command_parts[0]}'")
     except Exception as e:
