@@ -1,6 +1,7 @@
 from selenium.webdriver import Firefox
 from selenium.webdriver import Chrome
-import sys, os
+from databases import MongoHandler
+import sys, os, time
 
 ### Android options does not work currently
 #change for a headless connection
@@ -16,6 +17,7 @@ print(f'HEADLESS:{HEADLESS}')
 #print(sys.argv)
 print('setting up!')
 browser = sys.argv[1].lower()
+
 if browser == "firefox":
     from selenium.webdriver.firefox.options import Options
     options = Options()
@@ -76,8 +78,11 @@ pages = None
 s_genre = genre_bar.find_element_by_class_name('selected')
 s_subgenre = None
 s_music = None
-
+# database 
+db = MongoHandler()
 #Getters
+
+print(f'db=> {db.db} selected')
 
 def getGenres():
     span_list = genre_bar.find_elements_by_tag_name('span')
@@ -275,17 +280,21 @@ def changemode(mode):
 
 #interaction
 def play(music):
+    global s_music
     if music in named_music_list.keys():
-        named_music_list[music].click()
+        s_music = named_music_list[music]
+        s_music.click()
     else:
         print(f"title: {music} not found!" )
 
 
 def playindex(index):
+    global s_music
     if index.isdigit():
         dig = int(index)
         if dig in enum_music_list.keys():
-            enum_music_list[dig].click()
+            s_music = enum_music_list[dig]
+            s_music.click()
         else:
             print(f"{dig} index not found!")
     else:
@@ -300,9 +309,16 @@ def current():
     location = details_inner.find_element_by_class_name('detail-loc').text
     time_el = details_inner.find_element_by_class_name('time_elapsed').text
     time_tot = details_inner.find_element_by_class_name('time_total').text
-    return f"Playing: {title} from {album} {artist} of {location} \n\t{time_el}\\{time_tot}"
+    return {'name':title, 'album':album, 'artist':artist, 'elapsed':time_el, 'total':time_tot}
 
+def save_current(desc='', collection=''):
+    global db
+    db.insert_documents([{'track_meta':current(),'description':desc if desc else "No description", 'time':time.strftime('%Y-%m-%d %H:%M,%S')}], collection)
 
+def toggle_playing_music():
+    global s_music
+    if s_music:
+        s_music.click()
 
 
 ###Main LOOP
@@ -311,6 +327,7 @@ HELP = f"""
         exit                                to exit
         play [music_name]                   to play music with its name
         playindex [index]                   to play music with an index
+        toggle                              to pause/play selectes music
 
         listmusic                           to list available music
         listartist                          to list current playlist artist
@@ -352,8 +369,10 @@ while True:
             print("**", dict(zip(enum_music_list.keys(), named_music_list.keys())))
         elif "playindex" in command_parts:
             playindex(command_parts[-1])
+            save_current(collection='music_history')
         elif "play" in command:
-            play(' '.join(command_parts[1:]))
+            play(parameters)
+            save_current(collection='music_history')
         elif "refresh" in command:
             refresh()
         elif "listgenres" in command:
@@ -372,10 +391,14 @@ while True:
             changemode(command_parts[1:])
         elif "updatedata" in command:           #dev tool
             updateData()
-        elif "dev" in command:
-            break
+        # elif "dev" in command:
+        #     break
         elif "current" in command:
             print(current())
+        elif "save" in command:
+            save_current(str.strip(parameters), 'saved_tracks')
+        elif "toggle" in command:
+            toggle_playing_music()
         else:
             print(f"**unkown command '{command_parts[0]}'")
     except Exception as e:
