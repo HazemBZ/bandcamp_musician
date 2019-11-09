@@ -19,7 +19,6 @@ def get_soup(data):
     return soup
 
 def start_extract(url):
-    print('new')
     tracks_data = None
     print("Extracting => ", url)
     soup = get_soup(request_album(url))
