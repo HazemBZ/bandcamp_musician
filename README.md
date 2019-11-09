@@ -8,7 +8,7 @@ A command line bandcamp music player (for now)
 # Installation:
 #### Install selenium:
 ```
-pip install selenium
+pip install selenium youtube-dl
 ```
 #### Run the script:
 ```

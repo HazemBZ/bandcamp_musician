@@ -1,17 +1,26 @@
 from selenium.webdriver import Firefox
 from selenium.webdriver import Chrome
-from databases import MongoHandler
+from albums import start_extract
+from os import system
+from random import randint
+#from databases import MongoHandler
+## ISSUE (extraction fails in some caises and breaks with no text for Nonetype)
+## link that fails => https://therentals.bandcamp.com/album/q36?from=discover-top
 import sys, os, time
+WIN_CHARS = ["/", "\\", ":", "?", "<", ">", "|"] # windows unaccepted characters
 
 ### Android options does not work currently
-#change for a headless connection
 URL = "https://bandcamp.com/"
 FF_PATH = "./drivers/geckodriver.exe"
 CHR_PATH = "./drivers/chromedriver.exe"
 CHRA_PATH = "./chromedriver"
 EDG_PATH = "./drivers/msedgedriver.exe"#requires extra care
-HEADLESS = not os.access('YES', os.R_OK)
+# headless option
+HEADLESS =  os.access('YES', os.R_OK)
 ff = None
+config_file_path = "ydl_config.txt"
+
+debug = False
 
 print(f'HEADLESS:{HEADLESS}')
 #print(sys.argv)
@@ -33,56 +42,67 @@ elif browser == "chrome":
     else:
         options.headless = HEADLESS
         ff = Chrome(executable_path=CHR_PATH,options=options)
+elif browser == "debug":
+    print("Debug mode")
+    print('run script in interactive mode with -i option')
+    debug = True
 else :
     print(f"unsupported {browser} browser")
     exit(1)
+if not debug:
+    print('Opening site...')
+    ff.get(URL)
+    print("Site opened!")
+    #+++++++++++++++++++++Prot
+    #parent holders
 
-print('Opening site...')
-ff.get(URL)
-print("Site opened!")
-#+++++++++++++++++++++Prot
-#parent holders
-try:
-    discover = ff.find_element_by_id('discover')
-except Exception as e:
-    print('failed to load page (probably a network issue)')
-    exit(0)
+    try:
+        discover = ff.find_element_by_id('discover')
+    except Exception as e:
+        print('failed to load page (probably a network issue)')
+        exit(0)
 
-pages_holder = discover.find_element_by_class_name('discover-pages')
+    pages_holder = discover.find_element_by_class_name('discover-pages')
 
-#direct holders
-filter_bar = discover.find_element_by_class_name('filter-types')
-genre_bar = discover.find_element_by_class_name('genre-bar')
-subgenre_bar = discover.find_element_by_class_name('subgenres-bar')
-slice_bar = discover.find_element_by_class_name('slice-bar')
-location_bar = discover.find_element_by_class_name('loc-bar')
-format_bar = discover.find_element_by_class_name('format-bar')
-dates_bar = discover.find_element_by_class_name('discover-dates')
-music_bar = discover.find_element_by_class_name('result-current')
-details_inner = discover.find_element_by_class_name('discover-detail-inner')
+    #direct holders
+    filter_bar = discover.find_element_by_class_name('filter-types')
+    genre_bar = discover.find_element_by_class_name('genre-bar')
+    subgenre_bar = discover.find_element_by_class_name('subgenres-bar')
+    slice_bar = discover.find_element_by_class_name('slice-bar')
+    location_bar = discover.find_element_by_class_name('loc-bar')
+    format_bar = discover.find_element_by_class_name('format-bar')
+    dates_bar = discover.find_element_by_class_name('discover-dates')
+    music_bar = discover.find_element_by_class_name('result-current')
+    details_inner = discover.find_element_by_class_name('discover-detail-inner')
 
-#++++++++++++++++++++categories  (useless currently)
-genres = None       #independant
-sub_genres = None   #dependant
-filters = None      #independant
-slices = None       #independant
-formats = None      #dependant
-times = None        #dependant
-locations = None    #dependant
-dates = None        #dependant
-#+++++++++++++++++++interactables
-named_music_list = None
-enum_music_list = None
-pages = None
-#selected elements
-s_genre = genre_bar.find_element_by_class_name('selected')
-s_subgenre = None
-s_music = None
-# database 
-db = MongoHandler()
-#Getters
+    #++++++++++++++++++++categories  (useless currently)
+    genres = None       #independant
+    sub_genres = None   #dependant
+    filters = None      #independant
+    slices = None       #independant
+    formats = None      #dependant
+    times = None        #dependant
+    locations = None    #dependant
+    dates = None        #dependant
+    #+++++++++++++++++++interactables
+    named_music_list = None
+    enum_music_list = None
+    pages = None
+    #selected elements
+    s_genre = genre_bar.find_element_by_class_name('selected')
+    s_subgenre = None
+    s_music = None
 
-print(f'db=> {db.db} selected')
+    """ Databases section """
+    #db = MongoHandler()
+    #print(f'db=> {db.db} selected')
+    #Getters
+
+    # cache
+    "Cached data"
+    last_current = None
+    last_extract = None
+
 
 def getGenres():
     span_list = genre_bar.find_elements_by_tag_name('span')
@@ -197,7 +217,7 @@ def setSubGenre(s):
                 subgenre_bar.find_element_by_class_name('scroller-next').click()
         else:
             print(f"unkown {s} subgenre" )
-    
+
 
 def setFilters():
     return "Filters Set!"
@@ -253,11 +273,12 @@ def updateMusicLists():
 
 def refresh():
     ff.refresh()
-    updateData() 
+    updateData()
 
 
 ## creates or deletes a YES file
 def changemode(mode):
+    global HEADLESS
     if "headless" in mode:
         if HEADLESS:
             print('already in headless mode')
@@ -265,11 +286,11 @@ def changemode(mode):
             try:                #try delete YES file
                 os.remove('./YES')
                 HEADLESS = True
-                print('mode set to HEADLESS')    
+                print('mode set to HEADLESS')
             except Exception as e:
                 print('\n',e,'\n')
     elif "gui" in mode:
-        if HEADLESS:         
+        if HEADLESS:
             with open('YES','wb'):  #create YES file
                 pass
             HEADLESS = False
@@ -289,7 +310,9 @@ def play(music):
 
 
 def playindex(index):
-    global s_music
+    global s_music, enum_music_list
+    if enum_music_list == None:
+        updateMusicLists()
     if index.isdigit():
         dig = int(index)
         if dig in enum_music_list.keys():
@@ -309,7 +332,8 @@ def current():
     location = details_inner.find_element_by_class_name('detail-loc').text
     time_el = details_inner.find_element_by_class_name('time_elapsed').text
     time_tot = details_inner.find_element_by_class_name('time_total').text
-    return {'name':title, 'album':album, 'artist':artist, 'elapsed':time_el, 'total':time_tot}
+    url = details_inner.find_element_by_css_selector("span.detail-album a").get_property("href")
+    return {'name':title, 'album':album, 'artist':artist, 'elapsed':time_el, 'total':time_tot, 'url':url}
 
 def save_current(desc='', collection=''):
     global db
@@ -320,6 +344,25 @@ def toggle_playing_music():
     if s_music:
         s_music.click()
 
+def playrand():
+    global s_music, enum_music_list
+    if enum_music_list == None:
+        updateMusicLists()
+    ra = randint(0, len(enum_music_list)-1)
+    s_music = enum_music_list[ra]
+    s_music.click()
+
+# REFACTOR (pass ydl config options as parameters)
+def update_config_file(dir_name):
+    global config_file_path
+    with open(config_file_path, "w") as f:
+        f.write(f"-o {dir_name}/%(title)s.%(ext)s")
+
+def batch_replace(word,chars_l,replacement=""):
+    copy = word
+    for char in chars_l:
+        copy = copy.replace(char, replacement)
+    return copy
 
 ###Main LOOP
 HELP = f"""
@@ -346,8 +389,12 @@ HELP = f"""
 
         refresh                             refresh pages (in case page not fully loaded)
         current                             selected track details
+        extract                             extract an album url and returns its tracks
+        album                               last extracted album
+        downloadindex                       downloads with track index
+        downloadalbum                       download selecred track's album
         {"changemode [mode]                 headless or graphical mode (add or delete a YES file with no extensions to enable/disable headless mode)"*0}
-       """  
+       """
 print(HELP)
 
 
@@ -369,10 +416,10 @@ while True:
             print("**", dict(zip(enum_music_list.keys(), named_music_list.keys())))
         elif "playindex" in command_parts:
             playindex(command_parts[-1])
-            save_current(collection='music_history')
-        elif "play" in command:
+            #save_current(collection='music_history')
+        elif "play" in command_parts:
             play(parameters)
-            save_current(collection='music_history')
+            #save_current(collection='music_history')
         elif "refresh" in command:
             refresh()
         elif "listgenres" in command:
@@ -384,7 +431,7 @@ while True:
         elif "setpage" in command:
             setPage(parameters)
         elif "listsubs" in command:
-            print(getSubGenresNames()) 
+            print(getSubGenresNames())
         elif "setsub" in command:
             setSubGenre(parameters)
         elif "changemode" in command:
@@ -394,11 +441,33 @@ while True:
         # elif "dev" in command:
         #     break
         elif "current" in command:
-            print(current())
+            last_current = current()
+            print(last_current)
         elif "save" in command:
             save_current(str.strip(parameters), 'saved_tracks')
         elif "toggle" in command:
             toggle_playing_music()
+        elif "devmode" in command:
+            break
+        elif "extract" in command:
+            if not last_current:
+                last_current = current()
+            last_extract = start_extract(last_current['url'])
+            print(last_extract)
+        elif "downloadindex" in command:# REFACTOR
+            album ='"'+ batch_replace(last_current['album'], WIN_CHARS)+'"'
+            system(f'mkdir {album}')
+            update_config_file(album)
+            system(fr"youtube-dl --config-location {config_file_path} --playlist-items {int(command_parts[-1])+1} {last_current['url']}")
+        elif "downloadalbum" in command:# REFACTOR
+            album = '"'+batch_replace(last_current['album'], WIN_CHARS)+'"'
+            system(f'mkdir "{album}"')
+            update_config_file(album)
+            system(f"youtube-dl --config-location {config_file_path} {last_current['url']}")
+        elif "album" in command:
+            print(last_extract)
+        elif "playrand" in command:
+            playrand()
         else:
             print(f"**unkown command '{command_parts[0]}'")
     except Exception as e:
