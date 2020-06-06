@@ -23,7 +23,7 @@ mongod_conf= "mongod.conf"
 download_folder= "$HOME/Desktop/ydl/"
 # FLAGS
 HEADLESS =  os.access('YES', os.R_OK)
-DB_DIR_SET= os.access('data') && os.access('data/db')
+DB_DIR_SET= os.access('data', os.R_OK) and os.access('data/db', os.R_OK) and os.access('data/logs', os.R_OK)
 debug = False
 # -----------
 ff = None # browser client
@@ -106,11 +106,13 @@ if not debug:
     s_music = None
 
     """ Databases section """
+    process = None
     try:
         print(" *setting up database")
         if not DB_DIR_SET:
-            subprocess.run("mkdir",'-p',"data/db")
-        subprocess.run(['mongod', '-f', mongod_conf])
+            print("  -creating db dir stcuture")
+            subprocess.run(["mkdir",'-p',"data/{db,logs}"])
+        process = subprocess.Popen(['/usr/bin/mongod', '-f', mongod_conf],stdout=subprocess.DEVNULL)
         db = MongoHandler()
         print(" => database all set")
     except Exception:
@@ -261,9 +263,15 @@ def setTimes():
     return "Times Set!"
 
 
-def destroy():
-    global ff
-    ff.close()
+def end():
+    global ff, process
+    try:
+        if process:
+            process.terminate()
+            process.poll()
+        ff.close()
+    except Exception as exp:
+        print(exp)
 
 
 def updateData():
@@ -432,8 +440,8 @@ while True:
         parameters = ' '.join(command_parts[1:])
         if "exit" in command:
             print("Goodbye!")
-            ff.close()
-            break
+            end()
+            exit(0)
         elif "help" in command :
             print(HELP)
         elif "listartist" in command:
@@ -502,6 +510,6 @@ while True:
         else:
             print(f"**unkown command '{command_parts[0]}'")
     except Exception as e:
-        print('Error\n',e,'Error\n')
+        print('Error\n',e,'\nError')
         print('Exiting...')
-        destroy()
+        end()
