@@ -1,26 +1,32 @@
-from selenium.webdriver import Firefox
-from selenium.webdriver import Chrome
+from selenium.webdriver import Firefox,Chrome
 from albums import start_extract
 from os import system
 from random import randint
-#from databases import MongoHandler
+## experimental
+#from IPython import embed
+
+from databases import MongoHandler
 ## ISSUE (extraction fails in some caises and breaks with no text for Nonetype)
 ## link that fails => https://therentals.bandcamp.com/album/q36?from=discover-top
-import sys, os, time
+import sys,os,time,subprocess
 WIN_CHARS = ["/", "\\", ":", "?", "<", ">", "|"] # windows unaccepted characters
 
-### Android options does not work currently
+### uri !Android options does not work currently
 URL = "https://bandcamp.com/"
-FF_PATH = "./drivers/geckodriver.exe"
+FF_PATH = "./drivers/geckodriver"
 CHR_PATH = "./drivers/chromedriver.exe"
 CHRA_PATH = "./chromedriver"
 EDG_PATH = "./drivers/msedgedriver.exe"#requires extra care
-# headless option
-HEADLESS =  os.access('YES', os.R_OK)
-ff = None
+# config files
 config_file_path = "ydl_config.txt"
-
+mongod_conf= "mongod.conf"
+download_folder= "$HOME/Desktop/ydl/"
+# FLAGS
+HEADLESS =  os.access('YES', os.R_OK)
+DB_DIR_SET= os.access('data') && os.access('data/db')
 debug = False
+# -----------
+ff = None # browser client
 
 print(f'HEADLESS:{HEADLESS}')
 #print(sys.argv)
@@ -50,9 +56,9 @@ else :
     print(f"unsupported {browser} browser")
     exit(1)
 if not debug:
-    print('Opening site...')
+    print(' *Loading window...')
     ff.get(URL)
-    print("Site opened!")
+    print(" =>Site opened!")
     #+++++++++++++++++++++Prot
     #parent holders
 
@@ -60,20 +66,26 @@ if not debug:
         discover = ff.find_element_by_id('discover')
     except Exception as e:
         print('failed to load page (probably a network issue)')
-        exit(0)
+        ff.close()
+        exit(1)
 
-    pages_holder = discover.find_element_by_class_name('discover-pages')
+    try:
+        pages_holder = discover.find_element_by_class_name('discover-pages')
 
-    #direct holders
-    filter_bar = discover.find_element_by_class_name('filter-types')
-    genre_bar = discover.find_element_by_class_name('genre-bar')
-    subgenre_bar = discover.find_element_by_class_name('subgenres-bar')
-    slice_bar = discover.find_element_by_class_name('slice-bar')
-    location_bar = discover.find_element_by_class_name('loc-bar')
-    format_bar = discover.find_element_by_class_name('format-bar')
-    dates_bar = discover.find_element_by_class_name('discover-dates')
-    music_bar = discover.find_element_by_class_name('result-current')
-    details_inner = discover.find_element_by_class_name('discover-detail-inner')
+        #direct holders
+        filter_bar = discover.find_element_by_class_name('filter-types')
+        genre_bar = discover.find_element_by_class_name('genre-bar')
+        subgenre_bar = discover.find_element_by_class_name('subgenres-bar')
+        slice_bar = discover.find_element_by_class_name('slice-bar')
+        location_bar = discover.find_element_by_class_name('loc-bar')
+        format_bar = discover.find_element_by_class_name('format-bar')
+        dates_bar = discover.find_element_by_class_name('discover-dates')
+        music_bar = discover.find_element_by_class_name('result-current')
+        details_inner = discover.find_element_by_class_name('discover-detail-inner')
+    except Exception:
+        print("failed to scrape a node")
+        ff.close()
+        exit(1)
 
     #++++++++++++++++++++categories  (useless currently)
     genres = None       #independant
@@ -94,8 +106,18 @@ if not debug:
     s_music = None
 
     """ Databases section """
-    #db = MongoHandler()
-    #print(f'db=> {db.db} selected')
+    try:
+        print(" *setting up database")
+        if not DB_DIR_SET:
+            subprocess.run("mkdir",'-p',"data/db")
+        subprocess.run(['mongod', '-f', mongod_conf])
+        db = MongoHandler()
+        print(" => database all set")
+    except Exception:
+        print("Failed to initiate database client or server")
+        ff.close()
+        exit(1)
+    print(f'db=> {db.db} selected')
     #Getters
 
     # cache
@@ -203,9 +225,9 @@ def setPage(p):
 
 
 def setSubGenre(s):
-    subs = getSubGenres()
     global s_subgenre,s_genre
-    if len(subs)<=0:
+    subs = getSubGenres()
+    if len(subs) <= 0:
         print(f"{s_genre} has no subgenre")
     else:
         if s in subs.keys():
@@ -240,26 +262,29 @@ def setTimes():
 
 
 def destroy():
+    global ff
     ff.close()
 
 
 def updateData():
     #========globals
     global discover, pages_holder, filter_bar, genre_bar, subgenre_bar, slice_bar,location_bar, format_bar, dates_bar, music_bar, music_bar
-    #parent holders
-    discover = ff.find_element_by_id('discover')
-    pages_holder = discover.find_element_by_class_name('discover-pages')
+    try:
+        #parent holders
+        discover = ff.find_element_by_id('discover')
+        pages_holder = discover.find_element_by_class_name('discover-pages')
 
-    #direct holders
-    filter_bar = discover.find_element_by_class_name('filter-types')
-    genre_bar = discover.find_element_by_class_name('genre-bar')
-    subgenre_bar = discover.find_element_by_class_name('subgenres-bar')
-    slice_bar = discover.find_element_by_class_name('slice-bar')
-    location_bar = discover.find_element_by_class_name('loc-bar')
-    format_bar = discover.find_element_by_class_name('format-bar')
-    dates_bar = discover.find_element_by_class_name('discover-dates')
-    music_bar = discover.find_element_by_class_name('result-current')
-
+        #direct holders
+        filter_bar = discover.find_element_by_class_name('filter-types')
+        genre_bar = discover.find_element_by_class_name('genre-bar')
+        subgenre_bar = discover.find_element_by_class_name('subgenres-bar')
+        slice_bar = discover.find_element_by_class_name('slice-bar')
+        location_bar = discover.find_element_by_class_name('loc-bar')
+        format_bar = discover.find_element_by_class_name('format-bar')
+        dates_bar = discover.find_element_by_class_name('discover-dates')
+        music_bar = discover.find_element_by_class_name('result-current')
+    except Exception:
+        print("failed to update nodes data")
     #============End
 
 
@@ -335,9 +360,9 @@ def current():
     url = details_inner.find_element_by_css_selector("span.detail-album a").get_property("href")
     return {'name':title, 'album':album, 'artist':artist, 'elapsed':time_el, 'total':time_tot, 'url':url}
 
-def save_current(desc='', collection=''):
+def save_current(desc="No description", collection='no_colletion'):
     global db
-    db.insert_documents([{'track_meta':current(),'description':desc if desc else "No description", 'time':time.strftime('%Y-%m-%d %H:%M,%S')}], collection)
+    db.insert_documents([{'track_meta':current(),'description':desc, 'time':time.strftime('%Y-%m-%d %H:%M,%S')}], collection)
 
 def toggle_playing_music():
     global s_music
@@ -351,12 +376,13 @@ def playrand():
     ra = randint(0, len(enum_music_list)-1)
     s_music = enum_music_list[ra]
     s_music.click()
+    #current()
 
 # REFACTOR (pass ydl config options as parameters)
 def update_config_file(dir_name):
-    global config_file_path
+    global config_file_path, download_folder
     with open(config_file_path, "w") as f:
-        f.write(f"-o {dir_name}/%(title)s.%(ext)s")
+        f.write(f"-o {download_folder}{dir_name}/%(title)s.%(ext)s")
 
 def batch_replace(word,chars_l,replacement=""):
     copy = word
@@ -399,6 +425,7 @@ print(HELP)
 
 
 while True:
+    #embed()
     try:
         command = input(">>")
         command_parts = command.split(' ')
@@ -416,10 +443,12 @@ while True:
             print("**", dict(zip(enum_music_list.keys(), named_music_list.keys())))
         elif "playindex" in command_parts:
             playindex(command_parts[-1])
-            #save_current(collection='music_history')
+            current()
+            save_current(collection='music_history')
         elif "play" in command_parts:
             play(parameters)
-            #save_current(collection='music_history')
+            current()
+            save_current(collection='music_history')
         elif "refresh" in command:
             refresh()
         elif "listgenres" in command:
@@ -456,18 +485,20 @@ while True:
             print(last_extract)
         elif "downloadindex" in command:# REFACTOR
             album ='"'+ batch_replace(last_current['album'], WIN_CHARS)+'"'
-            system(f'mkdir {album}')
+            subprocess.run(['mkdir', '-p', f"{download_folder}/{album}"])
             update_config_file(album)
             system(fr"youtube-dl --config-location {config_file_path} --playlist-items {int(command_parts[-1])+1} {last_current['url']}")
         elif "downloadalbum" in command:# REFACTOR
             album = '"'+batch_replace(last_current['album'], WIN_CHARS)+'"'
-            system(f'mkdir "{album}"')
+            subprocess.run(['mkdir', '-p', f"{download_folder}/{album}"])
             update_config_file(album)
             system(f"youtube-dl --config-location {config_file_path} {last_current['url']}")
         elif "album" in command:
             print(last_extract)
         elif "playrand" in command:
             playrand()
+            current()
+            save_current(collection='music_history')
         else:
             print(f"**unkown command '{command_parts[0]}'")
     except Exception as e:

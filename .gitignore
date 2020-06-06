@@ -1,5 +1,8 @@
 *.log
-selenium*
-/__pycache__/*
-**/*.pyc
 *.zip
+*.txt
+selenium*
+__pycache__/
+data/
+.gitignore
+drivers/
