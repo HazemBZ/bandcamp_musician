@@ -1,1 +1,1 @@
--o $sounds/ydl/"ZEROZEROZERO"/%(title)s.%(ext)s
+-o $HOME/Desktop/ydl/"Black Plight"/%(title)s.%(ext)s

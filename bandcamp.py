@@ -111,7 +111,7 @@ if not debug:
         print(" *setting up database")
         if not DB_DIR_SET:
             print("  -creating db dir stcuture")
-            subprocess.run(["mkdir",'-p',"data/{db,logs}"])
+            subprocess.run(["bash","-c","mkdir -p data/{db,logs}"])
         process = subprocess.Popen(['/usr/bin/mongod', '-f', mongod_conf],stdout=subprocess.DEVNULL)
         db = MongoHandler()
         print(" => database all set")
@@ -200,6 +200,17 @@ def getPages():
     pages = pages_holder.find_elements_by_class_name('item-page') #direct
     return {a.text: a for a in pages }
 
+def current():
+    global details_inner, last_current
+    title = details_inner.find_element_by_class_name('title').text
+    album = details_inner.find_element_by_class_name('detail-album').text
+    artist = details_inner.find_element_by_class_name('detail-artist').text
+    location = details_inner.find_element_by_class_name('detail-loc').text
+    time_el = details_inner.find_element_by_class_name('time_elapsed').text
+    time_tot = details_inner.find_element_by_class_name('time_total').text
+    url = details_inner.find_element_by_css_selector("span.detail-album a").get_property("href")
+    last_current = {'name':title, 'album':album, 'artist':artist, 'elapsed':time_el, 'total':time_tot, 'url':url}
+    return last_current
 
 ##Setters
 
@@ -210,6 +221,7 @@ def setGenre(g):
         s_genre = g
         try:
             getGenres()[g].click()
+            current()
         except Exception as e :
             print(f"Error: element obscured =) scrolling...")
             genre_bar.find_element_by_class_name('scroller-next').click()
@@ -236,6 +248,7 @@ def setSubGenre(s):
             try:
                 subs[s].click()
                 s_subgenre = s
+                current()
             except:
                 print("element obscured try again")
                 subgenre_bar.find_element_by_class_name('scroller-next').click()
@@ -337,7 +350,11 @@ def play(music):
     global s_music
     if music in named_music_list.keys():
         s_music = named_music_list[music]
-        s_music.click()
+        try:
+            s_music.click()
+        except Exception:
+            s_music.click()
+            print("second click!")
     else:
         print(f"title: {music} not found!" )
 
@@ -350,23 +367,18 @@ def playindex(index):
         dig = int(index)
         if dig in enum_music_list.keys():
             s_music = enum_music_list[dig]
-            s_music.click()
+            try:
+                s_music.click()
+            except Exception:
+                s_music.click()
+                print("second click!")
         else:
             print(f"{dig} index not found!")
     else:
         print(f"{index} not a digit!!")
 
 
-def current():
-    global details_inner
-    title = details_inner.find_element_by_class_name('title').text
-    album = details_inner.find_element_by_class_name('detail-album').text
-    artist = details_inner.find_element_by_class_name('detail-artist').text
-    location = details_inner.find_element_by_class_name('detail-loc').text
-    time_el = details_inner.find_element_by_class_name('time_elapsed').text
-    time_tot = details_inner.find_element_by_class_name('time_total').text
-    url = details_inner.find_element_by_css_selector("span.detail-album a").get_property("href")
-    return {'name':title, 'album':album, 'artist':artist, 'elapsed':time_el, 'total':time_tot, 'url':url}
+
 
 def save_current(desc="No description", collection='no_colletion'):
     global db
@@ -383,7 +395,11 @@ def playrand():
         updateMusicLists()
     ra = randint(0, len(enum_music_list)-1)
     s_music = enum_music_list[ra]
-    s_music.click()
+    try:
+        s_music.click()
+    except Exception:
+        s_music.click()
+        print("second click!")
     #current()
 
 # REFACTOR (pass ydl config options as parameters)
@@ -478,8 +494,7 @@ while True:
         # elif "dev" in command:
         #     break
         elif "current" in command:
-            last_current = current()
-            print(last_current)
+            print(current())
         elif "save" in command:
             save_current(str.strip(parameters), 'saved_tracks')
         elif "toggle" in command:
@@ -492,24 +507,50 @@ while True:
             last_extract = start_extract(last_current['url'])
             print(last_extract)
         elif "downloadindex" in command:# REFACTOR
+            if not last_current:
+                current()
             album ='"'+ batch_replace(last_current['album'], WIN_CHARS)+'"'
             subprocess.run(['mkdir', '-p', f"{download_folder}/{album}"])
             update_config_file(album)
-            system(fr"youtube-dl --config-location {config_file_path} --playlist-items {int(command_parts[-1])+1} {last_current['url']}")
+            subprocess.Popen(["youtube-dl","-q", "--config-location", config_file_path, "--playlist-items", str(int(command_parts[-1])+1), last_current['url']])
+            print(f" donwload started at {download_folder}{album}")
         elif "downloadalbum" in command:# REFACTOR
+            if not last_current:
+                current()
             album = '"'+batch_replace(last_current['album'], WIN_CHARS)+'"'
             subprocess.run(['mkdir', '-p', f"{download_folder}/{album}"])
             update_config_file(album)
-            system(f"youtube-dl --config-location {config_file_path} {last_current['url']}")
+            subprocess.Popen(["youtube-dl", "-q", "--config-location", config_file_path, last_current['url']])
+            print(f" donwload started at {download_folder}{album}")
         elif "album" in command:
             print(last_extract)
         elif "playrand" in command:
             playrand()
             current()
             save_current(collection='music_history')
+        elif "su" in command:
+            part = command_parts[-1]
+            if part.isdigit():
+                subprocess.run(["_snd", "up", part])
+            else:
+                print(f"{part} not a digit")
+        ## _snd is an alias for shell script
+        elif "sd" in command:
+            part = command_parts[-1]
+            if part.isdigit():
+                subprocess.run(["_snd", "down", part])
+            else:
+                print(f"{part} not a digit")
+        elif "snd" in command:
+            part = command_parts[-1]
+            if part.isdigit():
+                subprocess.run(["_snd", "set", part])
+            else:
+                print(f"{part} not a digit")
+
         else:
             print(f"**unkown command '{command_parts[0]}'")
     except Exception as e:
-        print('Error\n',e,'\nError')
+        print('Error\n',e)
         print('Exiting...')
         end()
