@@ -1,6 +1,6 @@
 from selenium.webdriver import Firefox,Chrome
 from albums import start_extract
-from os import system
+from os import system, path
 from random import randint
 ## experimental
 #from IPython import embed
@@ -12,7 +12,7 @@ import sys,os,time,subprocess
 WIN_CHARS = ["/", "\\", ":", "?", "<", ">", "|"] # windows unaccepted characters
 
 ### uri !Android options does not work currently
-URL = "https://bandcamp.com/"
+URL = "https://bandcamp.com/?g=electronic&s=new&p=0&gn=0&f=all&w=0"#https://bandcamp.com/"
 FF_PATH = "./drivers/geckodriver"
 CHR_PATH = "./drivers/chromedriver.exe"
 CHRA_PATH = "./chromedriver"
@@ -20,7 +20,7 @@ EDG_PATH = "./drivers/msedgedriver.exe"#requires extra care
 # config files
 config_file_path = "ydl_config.txt"
 mongod_conf= "mongod.conf"
-download_folder= "$HOME/Desktop/ydl/"
+download_folder= os.path.expandvars("$HOME/Desktop/ydl/")
 # FLAGS
 HEADLESS =  os.access('YES', os.R_OK)
 DB_DIR_SET= os.access('data', os.R_OK) and os.access('data/db', os.R_OK) and os.access('data/logs', os.R_OK)
@@ -101,7 +101,7 @@ if not debug:
     enum_music_list = None
     pages = None
     #selected elements
-    s_genre = genre_bar.find_element_by_class_name('selected')
+    s_genre = None#genre_bar.find_element_by_class_name('selected')
     s_subgenre = None
     s_music = None
 
@@ -521,7 +521,7 @@ while True:
             subprocess.run(['mkdir', '-p', f"{download_folder}/{album}"])
             update_config_file(album)
             subprocess.Popen(["youtube-dl", "-q", "--config-location", config_file_path, last_current['url']])
-            print(f" donwload started at {download_folder}{album}")
+            print(f" download started at {download_folder}{album}")
         elif "album" in command:
             print(last_extract)
         elif "playrand" in command:

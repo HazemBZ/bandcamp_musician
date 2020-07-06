@@ -1,1 +1,0 @@
--o $HOME/Desktop/ydl/"Black Plight"/%(title)s.%(ext)s
