@@ -6,10 +6,16 @@ A command line bandcamp music player (for now)
 + navigator
 + your navigator compatible webdriver (the latest Firefox and Chrome webdrivers are pre-packaged)
 # Installation:
-#### Install selenium:
+#### Install dependencies:
 ```
-pip install selenium
+pip install -r requirements.txt
 ```
+
+#### Add latest Webdriver to drivers folder
++ [geckdriver](https://github.com/mozilla/geckodriver/releases) -> Firefox browser
++ [chrmoium](https://chromedriver.chromium.org/) -> Chromium based browsers
++ [msedgedriver](https://developer.microsoft.com/en-us/microsoft-edge/tools/webdriver/) -> Edge browser
+
 #### Run the script:
 ```
 python bandcamp.py [navigator_name]
