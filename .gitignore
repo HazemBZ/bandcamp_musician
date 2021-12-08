@@ -7,5 +7,5 @@ data/
 .gitignore
 drivers/
 ydl_config.txt
-driver/*
+drivers/*
 .*
