@@ -1,4 +1,4 @@
-A command line bandcamp music player (for now)
+> A command line bandcamp music player (for now)
 
 # Requirements:
 + python3
