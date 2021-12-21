@@ -1,5 +1,5 @@
 pipeline {
-    agent { docker { image 'python-black' } }
+    agent { docker { image 'python-black:v1' } }
     stages {
         stage('build') {
             steps {
